@@ -20,7 +20,7 @@ jobs:
         run: |
           ls -lh Homeroute/backup/backup_20260207_0112.sql
 
-      - name: Restore backup to Render PostgreSQL
+      - name: Restore backup to Render PostgreSQL (custom-format)
         env:
           DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
         run: |
@@ -29,8 +29,15 @@ jobs:
             exit 1
           fi
 
-          echo "Restoring database..."
-          psql "$DATABASE_URL_RESTORE" < Homeroute/backup/backup_20260207_0112.sql
+          echo "Restoring database with pg_restore..."
+
+          pg_restore \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            --dbname="$DATABASE_URL_RESTORE" \
+            Homeroute/backup/backup_20260207_0112.sql
 
       - name: Done
         run: echo "Database restore completed successfully"
