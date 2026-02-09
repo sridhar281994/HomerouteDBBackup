@@ -11,30 +11,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL 16 client (noble-compatible)
+      - name: Install PostgreSQL 16 client (Ubuntu 24.04 noble compatible)
         run: |
           sudo apt-get update
           sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
+          # Add PostgreSQL official GPG key (modern keyring method)
           sudo install -d /usr/share/keyrings
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
             | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
 
+          # Add PostgreSQL APT repo
           echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/postgresql-pgdg.list
 
           sudo apt-get update
           sudo apt-get install -y postgresql-client-16
 
-          # Force PATH to PostgreSQL 16 binaries
-          echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
-
-      - name: Verify pg_restore version and path
+      - name: Verify pg_restore binaries and versions
         run: |
-          which pg_restore
-          pg_restore --version
+          echo "System pg_restore:"
+          which pg_restore || true
+          pg_restore --version || true
 
-      - name: Restore backup to Render PostgreSQL
+          echo "PostgreSQL 16 pg_restore:"
+          ls -l /usr/lib/postgresql/16/bin/pg_restore
+          /usr/lib/postgresql/16/bin/pg_restore --version
+
+      - name: Restore backup to Render PostgreSQL (force pg_restore 16)
         env:
           DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
         run: |
@@ -43,9 +47,9 @@ jobs:
             exit 1
           fi
 
-          echo "Restoring database with pg_restore..."
+          echo "Restoring database with PostgreSQL 16 pg_restore..."
 
-          pg_restore \
+          /usr/lib/postgresql/16/bin/pg_restore \
             --no-owner \
             --no-privileges \
             --clean \
