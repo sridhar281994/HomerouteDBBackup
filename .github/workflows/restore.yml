@@ -11,16 +11,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
+      - name: Install PostgreSQL 16 client
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y wget ca-certificates gnupg
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo wget --quiet -O /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
 
-      - name: Verify backup file exists
-        run: |
-          ls -lh Homeroute/backup/backup_20260207_0112.sql
+      - name: Verify pg_restore version
+        run: pg_restore --version
 
-      - name: Restore backup to Render PostgreSQL (custom-format)
+      - name: Restore backup to Render PostgreSQL
         env:
           DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
         run: |
