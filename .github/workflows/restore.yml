@@ -1,41 +1,57 @@
-- name: Install PostgreSQL 16 client (force)
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+name: Restore PostgreSQL Backup to Render
 
-    sudo install -d /usr/share/keyrings
-    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-      | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+on:
+  workflow_dispatch:
 
-    echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
-      | sudo tee /etc/apt/sources.list.d/postgresql-pgdg.list
+jobs:
+  restore-db:
+    runs-on: ubuntu-latest
 
-    sudo apt-get update
-    sudo apt-get install -y postgresql-client-16
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # Force PATH to PostgreSQL 16 binaries
-    echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
+      - name: Install PostgreSQL 16 client (noble-compatible)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl gnupg lsb-release
 
-- name: Verify pg_restore version and path
-  run: |
-    which pg_restore
-    pg_restore --version
+          sudo install -d /usr/share/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
 
-- name: Restore backup to Render PostgreSQL
-  env:
-    DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
-  run: |
-    if [ -z "$DATABASE_URL_RESTORE" ]; then
-      echo "DATABASE_URL_RESTORE secret is not set"
-      exit 1
-    fi
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/postgresql-pgdg.list
 
-    echo "Restoring database with pg_restore..."
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
 
-    pg_restore \
-      --no-owner \
-      --no-privileges \
-      --clean \
-      --if-exists \
-      --dbname="$DATABASE_URL_RESTORE" \
-      Homeroute/backup/backup_20260207_0112.sql
+          # Force PATH to PostgreSQL 16 binaries
+          echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
+
+      - name: Verify pg_restore version and path
+        run: |
+          which pg_restore
+          pg_restore --version
+
+      - name: Restore backup to Render PostgreSQL
+        env:
+          DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
+        run: |
+          if [ -z "$DATABASE_URL_RESTORE" ]; then
+            echo "DATABASE_URL_RESTORE secret is not set"
+            exit 1
+          fi
+
+          echo "Restoring database with pg_restore..."
+
+          pg_restore \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            --dbname="$DATABASE_URL_RESTORE" \
+            Homeroute/backup/backup_20260207_0112.sql
+
+      - name: Done
+        run: echo "Database restore completed successfully"
