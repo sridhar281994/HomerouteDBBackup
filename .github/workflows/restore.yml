@@ -1,0 +1,36 @@
+name: Restore PostgreSQL Backup to Render
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restore-db:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify backup file exists
+        run: |
+          ls -lh Homeroute/backup/backup_20260207_0112.sql
+
+      - name: Restore backup to Render PostgreSQL
+        env:
+          DATABASE_URL_RESTORE: ${{ secrets.DATABASE_URL_RESTORE }}
+        run: |
+          if [ -z "$DATABASE_URL_RESTORE" ]; then
+            echo "DATABASE_URL_RESTORE secret is not set"
+            exit 1
+          fi
+
+          echo "Restoring database..."
+          psql "$DATABASE_URL_RESTORE" < Homeroute/backup/backup_20260207_0112.sql
+
+      - name: Done
+        run: echo "Database restore completed successfully"
